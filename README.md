@@ -1,1 +1,1 @@
-# my-experiments
+Some experiments and algorithms testing restults
