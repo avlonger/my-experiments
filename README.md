@@ -1,1 +1,1 @@
-Some experiments and algorithms testing restults
+Some experiments and algorithms testing results
