@@ -4,6 +4,7 @@
 from __future__ import division
 from random import choice
 import string
+import math
 from itertools import product
 from collections import defaultdict
 
@@ -271,6 +272,13 @@ def magic_word(k, m):
     return 'A' * k + 'BB' + ('A' * (k + 1) + 'B') * m
 
 
+def unequal_count_after_first_letter(word):
+    for i in xrange(1, len(word)):
+        if word[i] == word[0]:
+            return i - 1
+    return len(word) - 1
+
+
 if __name__ == '__main__':
     # magic = magic_word(20, 10)
     # q_magic = query_count(magic)
@@ -376,29 +384,38 @@ if __name__ == '__main__':
         4: 13,
         5: 12
     }
-    for ALPHABET in xrange(2, 3):
+    for ALPHABET in xrange(2, 6):
         alphabet = AVAILABLE_LETTERS[:ALPHABET]
-        result = defaultdict(lambda: defaultdict(int))
+        result = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+        prefixes = defaultdict(lambda: defaultdict(set))
         max_len = max_lens[ALPHABET]
         lengths = range(2, max_len)
         for n in lengths:
             print n
             for word in all_words(alphabet, n):
-                if is_borderless(word):
-                    result[n][0] += 1
-                    for i in xrange(1, n):
-                        if word[i] != word[0]:
-                            result[n][i] += 1
-                        else:
-                            break
-        for j in xrange(max_len - 1):
-            pl.plot(lengths, [result[i][j] for i in lengths], label='$b_j(i, \sigma)$')
-            pl.plot(lengths, [0] * j + [(ALPHABET - 1) ** (j + 1) * ALPHABET ** (i - j - 1) - ALPHABET ** (i - 2) for i in lengths[j:]], label='bound')
-            pl.legend(loc=2)
-            pl.savefig('sigma{}_j{}.png'.format(ALPHABET, j))
-            pl.axes().clear()
+                i = max_borderless_prefix(word)
+                if i < (n - 1) // 2 + 1:
+                    continue
+                prefix = word[:i]
+                j = unequal_count_after_first_letter(prefix)
+                for l in xrange(min(j, n - i - 1) + 1):
+                    result[i][l][n] += 1
+                    prefixes[i][l].add(prefix)
 
-            pl.plot(lengths, [0] * j + [result[i][j] - ((ALPHABET - 1) ** (j + 1) * ALPHABET ** (i - j - 1) - ALPHABET ** (i - 2)) for i in lengths[j:]], label='difference')
-            pl.legend(loc=2)
-            pl.savefig('diff_sigma{}_j{}.png'.format(ALPHABET, j))
-            pl.axes().clear()
+        for i in result:
+            for j in result[i]:
+                lengths = sorted(result[i][j].iterkeys())
+                bound = len(prefixes[i][j]) * (2 ** j)
+                pl.plot(lengths, [result[i][j][n] for n in lengths], label='Words in form $SP_1...P_k$')
+                pl.plot(lengths, [bound] * len(lengths), label='$b_j(i, \sigma) 2^j$', color='r', linewidth=2)
+                pl.legend(loc=2)
+                _, m = pl.axes().get_ylim()
+                pl.axes().set_ylim((bound - 1, m))
+                pl.savefig('lemma3/sigma{sigma}/i{i}_j{j}.png'.format(sigma=ALPHABET, i=i, j=j))
+                pl.axes().clear()
+
+
+            # pl.plot(lengths, [0] * j + [result[i][j] - ((ALPHABET - 1) ** (j + 1) * ALPHABET ** (i - j - 1) - ALPHABET ** (i - 2)) for i in lengths[j:]], label='difference')
+            # pl.legend(loc=2)
+            # pl.savefig('diff_sigma{}_j{}.png'.format(ALPHABET, j))
+            # pl.axes().clear()
