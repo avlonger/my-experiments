@@ -162,6 +162,6 @@ if __name__ == '__main__':
         # pl.title('Difference between the length $n$ of a string and the average length of its maximal\n'
         #          'unbordered factor $\\beta(n)$ and maximal unbordered prefix $\\pi(n)$ '
         #          'for alphabet of size $\sigma={}$'.format(alphabet), fontproperties=font14)
-        save_me('results/{}/Alphabet_size_{}.png'.format(dir_name, alphabet), font14, dpi=900)
+        save_me('results/{}/Alphabet_size_{}.png'.format(dir_name, alphabet), font14)
 
         pl.axes().clear()

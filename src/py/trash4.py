@@ -11,6 +11,8 @@ from collections import defaultdict
 import numpy as np
 import pylab as pl
 
+from common import art_plot, Line
+
 
 AVAILABLE_LETTERS = string.uppercase
 
@@ -279,6 +281,62 @@ def unequal_count_after_first_letter(word):
     return len(word) - 1
 
 
+
+def words_from_prefix(prefix):
+    results = [{prefix}]
+    for length in xrange(len(prefix), 3 * len(prefix)):
+        result = set()
+        for i, prefixes in enumerate(results[-len(prefix):]):
+            for word in prefixes:
+                result.add(word + prefix[:length + 1 - len(word)])
+        results.append(result)
+    return [len(i) for i in results]
+
+
+def crazy_formula(prefix):
+    border_array = border(prefix)
+    border_array.reverse()
+    temp = 1 - (np.array(border_array) > 0)
+    result = [1]
+    for _ in prefix * 2:
+        result.append((temp[-min(len(result), len(prefix)):] * np.array(result[-len(prefix):])).sum())
+    return result
+
+
+def magic_pair(word):
+    k = 1
+    while k < len(word) and word[k] == word[0]:
+        k += 1
+    j = k
+    while j < len(word) and word[j] != word[0]:
+        j += 1
+    return k, j - k
+
+c_table = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+
+
+def c(j, k, i, sigma):
+    if j + k > i:
+        return 0
+
+    if c_table[j][k][i] == 0:
+        if j + k == i:
+            result = sigma * (sigma - 1) ** j
+        elif j + k + 1 == i:
+            result = sigma * (sigma - 1) ** (j + 1)
+        elif j + 2 * k + 1 > i:
+            result = sigma ** (i - j - k) * (sigma - 1) ** (j + 1)
+        elif (j + k) * 2 >= i:
+            result = (sigma - 1) ** (j - 1) * (sigma ** (i - j - k) * (sigma - 1) ** 2 - sigma ** (i - j - 2 * k + 1) + sigma)
+        else:
+            result = sigma * c(j, k, i - 1, sigma)
+            if i % 2 == 0:
+                result -= c(j, k, i / 2, sigma)
+        c_table[j][k][i] = result
+
+    return c_table[j][k][i]
+
+
 if __name__ == '__main__':
     # magic = magic_word(20, 10)
     # q_magic = query_count(magic)
@@ -292,12 +350,17 @@ if __name__ == '__main__':
     #     if q > q_max:
     #         q_max = q
     #     print q, word
+    # for word in all_words(AVAILABLE_LETTERS[:2], 10):
+    #     assert crazy_formula(word) == words_from_prefix(word)
+    #     if word[0] == 'B':
+    #         break
+
+    # max_val = 0
+    # ALPHABET = 2
+    # LENGTH = 30
+    # alphabet = AVAILABLE_LETTERS[:ALPHABET]
 
 
-    max_val = 0
-    ALPHABET = 2
-    LENGTH = 30
-    alphabet = AVAILABLE_LETTERS[:ALPHABET]
     # for length in xrange(6, LENGTH):
     #     print '\nLength', length
     #     for b_pos in xrange(1, length / 2 - 1):
@@ -378,44 +441,137 @@ if __name__ == '__main__':
     #         i += 1
     #         if i % 1000 == 0:
     #             print total / i
-    max_lens = {
-        2: 21,
-        3: 15,
-        4: 13,
-        5: 12
-    }
-    for ALPHABET in xrange(2, 6):
-        alphabet = AVAILABLE_LETTERS[:ALPHABET]
-        result = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
-        prefixes = defaultdict(lambda: defaultdict(set))
-        max_len = max_lens[ALPHABET]
-        lengths = range(2, max_len)
-        for n in lengths:
-            print n
-            for word in all_words(alphabet, n):
-                i = max_borderless_prefix(word)
-                if i < (n - 1) // 2 + 1:
-                    continue
-                prefix = word[:i]
-                j = unequal_count_after_first_letter(prefix)
-                for l in xrange(min(j, n - i - 1) + 1):
-                    result[i][l][n] += 1
-                    prefixes[i][l].add(prefix)
+    # max_lens = {
+    #     2: 21,
+    #     3: 15,
+    #     4: 13,
+    #     5: 12
+    # }
 
-        for i in result:
-            for j in result[i]:
-                lengths = sorted(result[i][j].iterkeys())
-                bound = len(prefixes[i][j]) * (2 ** j)
-                pl.plot(lengths, [result[i][j][n] for n in lengths], label='Words in form $SP_1...P_k$')
-                pl.plot(lengths, [bound] * len(lengths), label='$b_j(i, \sigma) 2^j$', color='r', linewidth=2)
-                pl.legend(loc=2)
-                _, m = pl.axes().get_ylim()
-                pl.axes().set_ylim((bound - 1, m))
-                pl.savefig('lemma3/sigma{sigma}/i{i}_j{j}.png'.format(sigma=ALPHABET, i=i, j=j))
-                pl.axes().clear()
+
+    # for ALPHABET in xrange(2, 6):
+    #     alphabet = AVAILABLE_LETTERS[:ALPHABET]
+    #     result = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+    #     prefixes = defaultdict(lambda: defaultdict(set))
+    #     max_len = max_lens[ALPHABET]
+    #     lengths = range(2, max_len)
+    #     for n in lengths:
+    #         print n
+    #         for word in all_words(alphabet, n):
+    #             i = max_borderless_prefix(word)
+    #             if i < (n - 1) // 2 + 1:
+    #                 continue
+    #             prefix = word[:i]
+    #             j = unequal_count_after_first_letter(prefix)
+    #             for l in xrange(min(j, n - i - 1) + 1):
+    #                 result[i][l][n] += 1
+    #                 prefixes[i][l].add(prefix)
+    #
+    #     for i in result:
+    #         for j in result[i]:
+    #             lengths = sorted(result[i][j].iterkeys())
+    #             bound = len(prefixes[i][j]) * (2 ** j)
+    #             pl.plot(lengths, [result[i][j][n] for n in lengths], label='Words in form $SP_1...P_k$')
+    #             pl.plot(lengths, [bound] * len(lengths), label='$b_j(i, \sigma) 2^j$', color='r', linewidth=2)
+    #             pl.legend(loc=2)
+    #             _, m = pl.axes().get_ylim()
+    #             pl.axes().set_ylim((bound - 1, m))
+    #             pl.savefig('lemma3/sigma{sigma}/i{i}_j{j}.png'.format(sigma=ALPHABET, i=i, j=j))
+    #             pl.axes().clear()
 
 
             # pl.plot(lengths, [0] * j + [result[i][j] - ((ALPHABET - 1) ** (j + 1) * ALPHABET ** (i - j - 1) - ALPHABET ** (i - 2)) for i in lengths[j:]], label='difference')
             # pl.legend(loc=2)
             # pl.savefig('diff_sigma{}_j{}.png'.format(ALPHABET, j))
             # pl.axes().clear()
+
+#     s = 3
+#     for i in xrange(3, 13):
+#         total = defaultdict(lambda: defaultdict(int))
+#         available_letters = AVAILABLE_LETTERS[:s]
+#         for word in all_words(available_letters, i):
+#             if is_borderless(word):
+#                 k, j = magic_pair(word)
+#                 for l in xrange(1, j + 1):
+#                     total[k][l] += 1
+#         for k, values in total.iteritems():
+#             for j, v in values.iteritems():
+#                 if k > 1:
+#                     assert c(j, k, i, s) == v
+#
+# else:
+    max_lens = {
+        # 2: 16,
+        3: 14,
+        # 4: 11,
+        # 5: 11,
+    }
+
+    for alphabet, max_len in max_lens.iteritems():
+        result = []
+        for length in xrange(1, max_len):
+            print alphabet, length
+            total = 0
+            available_letters = AVAILABLE_LETTERS[:alphabet]
+            for word in all_words(available_letters, length):
+                total += max_borderless_prefix(word)
+                if word[0] != 'A':
+                    break
+            result.append(total * alphabet)
+
+        pl.plot(xrange(1, max_len), [i + 1 - t / alphabet ** (i + 1) for i, t in enumerate(result)])
+        pl.savefig('test.png')
+
+
+        # for j, values_per_length in values.iteritems():
+        #     q = alphabet
+        #     for length in sorted(values_per_length):
+        #         if j == 0:
+        #             continue
+        #         my_value = q ** (length - j) * (q - 1) ** (j - 1) * (q - 2)
+        #         assert my_value < values_per_length[length] * q
+        #
+        #     lengths = sorted(values_per_length)
+        #     plot_error = True
+        #     if plot_error:
+        #         if j == 1 or j == 5:
+        #             print '=' * 40
+        #             print 'sigma =', q, 'j =', j
+        #             for l in lengths:
+        #                 print l, '&', '{:.3f}'.format((values_per_length[l] * q - q ** (l - j) * (q - 1) ** (j - 1) * (q - 2)) / (values_per_length[l] * q)), '\\\\ \\hline'
+        #             print '=' * 40
+        #         lines = [
+        #             Line(
+        #                 lengths,
+        #                 [(values_per_length[l] * q - q ** (l - j) * (q - 1) ** (j - 1) * (q - 2)) / (values_per_length[l] * q) for l in lengths],
+        #                 'Relative error'
+        #             ),
+        #         ]
+        #         art_plot(
+        #             lines=lines,
+        #             filename='b_j_results/{}/{}err{}.pdf'.format(q, q, j),
+        #             font_size=19,
+        #             xlabel=u'Длина слова $i$',
+        #             xlim=(min(lengths), max(lengths)),
+        #         )
+        #     else:
+        #         lines = [
+        #             Line(
+        #                 lengths,
+        #                 [q ** (l - j) * (q - 1) ** (j - 1) * (q - 2) / q ** l for l in lengths],
+        #                 '$\sigma^{-j}(\sigma - 1)^{j - 1}(\sigma - 2)$',
+        #             ),
+        #             Line(
+        #                 lengths,
+        #                 [values_per_length.get(l) * q / q ** l for l in lengths],
+        #                 '$v_j(i, \sigma)$',
+        #             )
+        #         ]
+        #         art_plot(
+        #             lines=lines,
+        #             filename='b_j_results/{}/{}j{}.pdf'.format(q, q, j),
+        #             font_size=19,
+        #             xlabel=u'Длина слова $i$',
+        #             legend_location=0,
+        #             xlim=(min(lengths), max(lengths)),
+        #         )
