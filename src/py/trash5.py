@@ -195,14 +195,51 @@ def old(n, sigma):
 
     return result / sigma ** n
 
+delta_table = defaultdict(lambda: defaultdict(int))
+
+
+def delta(i, j, sigma):
+    if i == j:
+        return b_0_precise(i, sigma)
+    if j == 1:
+        return b_0_precise(i, sigma)
+    if j == 2:
+        return b_precise(j, i, sigma)
+    if delta_table[i][j] == 0:
+        if 2 * j >= i:
+            result = b_0_precise(j, sigma) * sigma ** (i - j) - (sigma ** i - sigma ** math.ceil(i / 2)) / (sigma - 1)
+        else:
+            result = delta(i - 1, j, sigma) * sigma
+            if i % 2 == 0:
+                result -= sigma ** (i / 2)
+        delta_table[i][j] = result
+    return delta_table[i][j]
+
+
+beta_table = defaultdict(lambda: defaultdict(int))
+
+
+def beta(i, n, sigma):
+    if i == n:
+        return b_0_precise(i, sigma)
+    if i > n:
+        return 0
+    if beta_table[i][n] == 0:
+        result = b_0_precise(i, sigma) * (beta(i, n - 1, sigma) + beta(i, n - i, sigma))
+        for j in xrange(2, i):
+            result += delta(i, j, sigma) * beta(i, n - j, sigma)
+        beta_table[i][n] = result
+    return beta_table[i][n]
+
+
+def ultra_new(n, sigma):
+    return sum(i * beta(i, n, sigma) for i in xrange(1, n + 1)) / sigma ** n
+
 
 if __name__ == '__main__':
-    size = 5
-    result = []
+    size = 4
     for n in xrange(2, 101):
-        res = test(n, size)
-        result.append(n - res)
-        print n, n - res, n - new(n, size), n - old(n, size)
-    pl.plot(range(2, 101), result)
-    pl.savefig('alphabet{}.png'.format(size))
+        print n, ultra_new(n, size), new(n, size), old(n, size)
+    # pl.plot(range(2, 101), result)
+    # pl.savefig('alphabet{}.png'.format(size))
 

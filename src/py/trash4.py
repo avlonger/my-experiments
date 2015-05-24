@@ -5,6 +5,7 @@ from __future__ import division
 from random import choice
 import string
 import math
+import time
 from itertools import product
 from collections import defaultdict
 
@@ -312,6 +313,62 @@ def magic_pair(word):
         j += 1
     return k, j - k
 
+
+b_precise_table = defaultdict(lambda: defaultdict(int))
+
+
+def b_precise(j, i, sigma):
+    if j + 1 > i:
+        return 0
+    if b_precise_table[j][i] == 0:
+        if i <= 2 * j + 2:
+            result = (sigma - 1) ** (j - 1) * (sigma ** (i - j + 1) - 2 * sigma ** (i - j) + sigma)
+        else:
+            result = sigma * b_precise(j, i - 1, sigma)
+            if i % 2 == 0:
+                result -= b_precise(j, i / 2, sigma)
+
+        b_precise_table[j][i] = result
+
+    return b_precise_table[j][i]
+
+
+b_0_precise_table = defaultdict(int)
+
+
+def b_0_precise(i, sigma):
+    if i < 1:
+        return 0
+    if i == 1:
+        return sigma
+    if b_0_precise_table[i] == 0:
+        result = sigma * b_0_precise(i - 1, sigma)
+        if i % 2 == 0:
+            result -= b_0_precise(i / 2, sigma)
+        b_0_precise_table[i] = result
+    return b_0_precise_table[i]
+
+
+delta_table = defaultdict(lambda: defaultdict(int))
+
+
+def delta(i, j, sigma):
+    if i == j:
+        return b_0_precise(i, sigma)
+    if j == 1:
+        return b_0_precise(i, sigma)
+    if j == 2:
+        return b_precise(j, i, sigma)
+    if delta_table[i][j] == 0:
+        if 2 * j >= i:
+            result = b_0_precise(j, sigma) * sigma ** (i - j) - (sigma ** i - sigma ** math.ceil(i / 2)) / (sigma - 1)
+        else:
+            result = delta(i - 1, j, sigma) * sigma
+            if i % 2 == 0:
+                result -= sigma ** (i / 2)
+        delta_table[i][j] = result
+    return delta_table[i][j]
+
 c_table = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
 
 
@@ -336,6 +393,23 @@ def c(j, k, i, sigma):
 
     return c_table[j][k][i]
 
+
+beta_table = defaultdict(lambda: defaultdict(int))
+
+
+def beta(i, n, sigma):
+    if i == n:
+        return b_0_precise(i, sigma)
+    if i > n:
+        return 0
+    if beta_table[i][n] == 0:
+        result = b_0_precise(i, sigma) * beta(i, n - 1, sigma)
+        if i != 1:
+            result += b_0_precise(i, sigma) * beta(i, n - i, sigma)
+        for j in xrange(2, i):
+            result += delta(i, j, sigma) * beta(i, n - j, sigma)
+        beta_table[i][n] = result
+    return beta_table[i][n]
 
 if __name__ == '__main__':
     # magic = magic_word(20, 10)
@@ -501,77 +575,86 @@ if __name__ == '__main__':
 #
 # else:
     max_lens = {
-        # 2: 16,
-        3: 14,
+        # 2: 21,
+        # 3: 21,
         # 4: 11,
-        # 5: 11,
+        10: 5,
     }
 
     for alphabet, max_len in max_lens.iteritems():
-        result = []
+        result = defaultdict(lambda: defaultdict(int))
         for length in xrange(1, max_len):
-            print alphabet, length
-            total = 0
+            start = time.time()
+            print alphabet, length,
             available_letters = AVAILABLE_LETTERS[:alphabet]
             for word in all_words(available_letters, length):
-                total += max_borderless_prefix(word)
                 if word[0] != 'A':
                     break
-            result.append(total * alphabet)
+                if is_borderless(word):
+                    j = unequal_count_after_first_letter(word)
+                    for l in xrange(j + 1):
+                        result[l][length] += 1
+            print int(time.time() - start), 'sec'
 
-        pl.plot(xrange(1, max_len), [i + 1 - t / alphabet ** (i + 1) for i, t in enumerate(result)])
-        pl.savefig('test.png')
+        for j, values_per_length in result.iteritems():
+            q = alphabet
+            for length in sorted(values_per_length):
+                if j == 0:
+                    continue
+                my_value = q ** (length - j) * (q - 1) ** (j - 1) * (q - 2)
+                assert my_value < values_per_length[length] * q
 
+            lengths = sorted(values_per_length)
+            plot_error = False
+            if plot_error:
+                if j == 1 or j == 5:
+                    print '=' * 40
+                    print 'sigma =', q, 'j =', j
+                    for l in lengths:
+                        print l, '&', '{:.3f}'.format((values_per_length[l] * q - q ** (l - j) * (q - 1) ** (j - 1) * (q - 2)) / (values_per_length[l] * q)), '\\\\ \\hline'
+                    print '=' * 40
+                lines = [
+                    Line(
+                        lengths,
+                        [(values_per_length[l] * q - q ** (l - j) * (q - 1) ** (j - 1) * (q - 2)) / (values_per_length[l] * q) for l in lengths],
+                        'Relative error'
+                    ),
+                ]
+                art_plot(
+                    lines=lines,
+                    filename='b_j_results/{}/{}err{}.pdf'.format(q, q, j),
+                    font_size=19,
+                    xlabel=u'Длина слова $i$',
+                    xlim=(min(lengths), max(lengths)),
+                )
+            else:
+                lines = [
+                    Line(
+                        xrange(min(lengths), 21),
+                        [q ** (l - j) * (q - 1) ** (j - 1) * (q - 2) / q ** l for l in xrange(min(lengths), 21)],
+                        '$\sigma^{-j}(\sigma - 1)^{j - 1}(\sigma - 2)$',
+                    ),
+                    Line(
+                        xrange(min(lengths), 21),
+                        [values_per_length.get(l) * q / q ** l for l in lengths],
+                        '$v_j(i, \sigma)$',
+                    )
+                ]
 
-        # for j, values_per_length in values.iteritems():
-        #     q = alphabet
-        #     for length in sorted(values_per_length):
-        #         if j == 0:
-        #             continue
-        #         my_value = q ** (length - j) * (q - 1) ** (j - 1) * (q - 2)
-        #         assert my_value < values_per_length[length] * q
-        #
-        #     lengths = sorted(values_per_length)
-        #     plot_error = True
-        #     if plot_error:
-        #         if j == 1 or j == 5:
-        #             print '=' * 40
-        #             print 'sigma =', q, 'j =', j
-        #             for l in lengths:
-        #                 print l, '&', '{:.3f}'.format((values_per_length[l] * q - q ** (l - j) * (q - 1) ** (j - 1) * (q - 2)) / (values_per_length[l] * q)), '\\\\ \\hline'
-        #             print '=' * 40
-        #         lines = [
-        #             Line(
-        #                 lengths,
-        #                 [(values_per_length[l] * q - q ** (l - j) * (q - 1) ** (j - 1) * (q - 2)) / (values_per_length[l] * q) for l in lengths],
-        #                 'Relative error'
-        #             ),
-        #         ]
-        #         art_plot(
-        #             lines=lines,
-        #             filename='b_j_results/{}/{}err{}.pdf'.format(q, q, j),
-        #             font_size=19,
-        #             xlabel=u'Длина слова $i$',
-        #             xlim=(min(lengths), max(lengths)),
-        #         )
-        #     else:
-        #         lines = [
-        #             Line(
-        #                 lengths,
-        #                 [q ** (l - j) * (q - 1) ** (j - 1) * (q - 2) / q ** l for l in lengths],
-        #                 '$\sigma^{-j}(\sigma - 1)^{j - 1}(\sigma - 2)$',
-        #             ),
-        #             Line(
-        #                 lengths,
-        #                 [values_per_length.get(l) * q / q ** l for l in lengths],
-        #                 '$v_j(i, \sigma)$',
-        #             )
-        #         ]
-        #         art_plot(
-        #             lines=lines,
-        #             filename='b_j_results/{}/{}j{}.pdf'.format(q, q, j),
-        #             font_size=19,
-        #             xlabel=u'Длина слова $i$',
-        #             legend_location=0,
-        #             xlim=(min(lengths), max(lengths)),
-        #         )
+                line = lines[1]
+                lines[1] = Line(
+                    line[0],
+                    line[1] + [line[1][-1]] * (21 - min(line[0]) - len(line[1])),
+                    line[2],
+                )
+                print 'j = ', j
+                print '\n'.join(map(str, [(l, values_per_length.get(l) * q / q ** l) for l in lengths]))
+                art_plot(
+                    lines=lines,
+                    filename='b_j_results/{}/{}j{}.pdf'.format(q, q, j),
+                    font_size=19,
+                    xlabel=u'Длина слова $i$',
+                    legend_location=0,
+                    xlim=(min(lengths), 20),
+                    mirror_ymin=q == 2,
+                )
