@@ -578,7 +578,7 @@ if __name__ == '__main__':
         # 2: 21,
         # 3: 21,
         # 4: 11,
-        10: 5,
+        5: 14,
     }
 
     for alphabet, max_len in max_lens.iteritems():
