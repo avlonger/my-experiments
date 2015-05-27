@@ -6,6 +6,7 @@ from random import choice
 import string
 import math
 import time
+import datetime
 from itertools import product
 from collections import defaultdict
 
@@ -578,14 +579,14 @@ if __name__ == '__main__':
         # 2: 21,
         # 3: 21,
         # 4: 11,
-        5: 14,
+        8: 11,
     }
 
     for alphabet, max_len in max_lens.iteritems():
         result = defaultdict(lambda: defaultdict(int))
         for length in xrange(1, max_len):
             start = time.time()
-            print alphabet, length,
+            print alphabet, length, datetime.datetime.now(),
             available_letters = AVAILABLE_LETTERS[:alphabet]
             for word in all_words(available_letters, length):
                 if word[0] != 'A':
@@ -630,23 +631,17 @@ if __name__ == '__main__':
             else:
                 lines = [
                     Line(
-                        xrange(min(lengths), 21),
-                        [q ** (l - j) * (q - 1) ** (j - 1) * (q - 2) / q ** l for l in xrange(min(lengths), 21)],
+                        lengths,
+                        [(q - 1) ** (j - 1) * (q - 2) / q ** j] * len(lengths),
                         '$\sigma^{-j}(\sigma - 1)^{j - 1}(\sigma - 2)$',
                     ),
                     Line(
                         xrange(min(lengths), 21),
                         [values_per_length.get(l) * q / q ** l for l in lengths],
-                        '$v_j(i, \sigma)$',
+                        '$v_n$',
                     )
                 ]
 
-                line = lines[1]
-                lines[1] = Line(
-                    line[0],
-                    line[1] + [line[1][-1]] * (21 - min(line[0]) - len(line[1])),
-                    line[2],
-                )
                 print 'j = ', j
                 print '\n'.join(map(str, [(l, values_per_length.get(l) * q / q ** l) for l in lengths]))
                 art_plot(

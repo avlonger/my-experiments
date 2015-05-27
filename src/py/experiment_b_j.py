@@ -115,9 +115,9 @@ def unequal_count_after_first_letter(word):
 if __name__ == '__main__':
     max_lens = {
         2: 21,
-        3: 21,
-        5: 21,
-        8: 21,
+        # 3: 21,
+        # 5: 21,
+        # 8: 21,
     }
 
     for alphabet, max_len in max_lens.iteritems():
@@ -150,13 +150,13 @@ if __name__ == '__main__':
             lines = [
                 Line(
                     lengths,
-                    [q ** (-j) * (q - 1) ** (j - 1) * (q - 2) for l in lengths],
+                    [(q - 1) ** (j - 1) * (q - 2) / q ** j] * len(lengths),
                     '$\sigma^{-j}(\sigma - 1)^{j - 1}(\sigma - 2)$',
                 ),
                 Line(
                     lengths,
                     [values_per_length.get(l) * q / q ** l for l in lengths],
-                    '$v_j(i, \sigma)$',
+                    '$v_n$',
                 )
             ]
             print 'j = ', j
