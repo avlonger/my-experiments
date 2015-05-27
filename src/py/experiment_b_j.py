@@ -40,7 +40,7 @@ def art_plot(lines, filename, black_and_white=True, clear_before_plotting=True, 
     """
     Some helper for plotting
     """
-    font = fm.FontProperties(fname='cmunrm.ttf', size=font_size)
+    font = fm.FontProperties(fname='/Users/alonger/HSE/cmunrm.ttf', size=font_size)
     if clear_before_plotting:
         pl.axes().clear()
     for line, dashes in zip(lines, itertools.cycle(DASHES)):
