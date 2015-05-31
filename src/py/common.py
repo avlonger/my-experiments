@@ -21,7 +21,7 @@ Line = namedtuple('Line', ['x', 'y', 'label'])
 
 
 def art_plot(lines, filename, black_and_white=True, clear_before_plotting=True, font_size=12, title=None,
-             legend_location=None, xlabel=None, ylabel=None, xlim=None, mirror_ymin=False):
+             legend_location=None, xlabel=None, ylabel=None, xlim=None, ylim=None, mirror_ymin=False):
     font = fm.FontProperties(fname=FONT_PATH, size=font_size)
     if clear_before_plotting:
         pl.axes().clear()
@@ -34,10 +34,13 @@ def art_plot(lines, filename, black_and_white=True, clear_before_plotting=True, 
     if xlim is not None:
         pl.axes().set_xlim(xlim)
 
-    if mirror_ymin:
+    if mirror_ymin and ylim is None:
         ymin, ymax = pl.axes().get_ylim()
         ymin = -ymax * 0.25
         pl.axes().set_ylim((ymin, ymax))
+
+    if ylim is not None:
+        pl.axes().set_ylim(ylim)
 
     if legend_location is not None:
         pl.legend(loc=legend_location, prop=font)
